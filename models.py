@@ -30,11 +30,8 @@ class Questions(BaseModel):
 	def get_batch(cls, User, Categories, amount):
 		categories = [category.key for category in Categories]
 		questions = cls.query(cls.flag_count < 10, cls.category.IN(categories)).fetch(amount)
-		# user_answers = Users.get_by_id(User).answered
-		# questions = cls.query(cls.flag_count < 10, cls.category in Categories)
-		# questions_list = [question for question in questions if User not in answered]
-		print questions
-		return questions
+		questions_list = [question for question in questions if(User.key not in question.answered)]
+		return questions_list
 
 	def yes_vote(self, User):
 		user = Users.get_by_id(User)
@@ -54,9 +51,53 @@ class Questions(BaseModel):
 		self.put()
 		return True
 
+	def favourite(self, User):
+		try:
+			User.favourited.append(self.key)
+			User.put()
+			return True
+		except:
+			return False
+
+	def unfavourite(self, User):
+		try:
+			key = self.key
+			index = User.favourited.index(key)
+			User.favourited.pop(index)
+			User.put()
+			return True
+		except:
+			return False
+
+	def flag(self, User):
+		try:
+			user = Users.get_by_id(User)
+			if user.key in self.answered:
+				return False
+			self.answered.append(user.key)
+			self.flag_count =+ 1
+			self.put()
+			return True
+		except:
+			return False
+
+	def results(self):
+		total = float(self.yes_count) + float(self.no_count)
+		yes_percent = float(self.yes_count) / total
+		no_percent = float(self.no_count) / total
+		results_dict = {}
+		results_dict.update({"yes_percent": yes_percent, "no_percent": no_percent, 
+			"yes_count": self.yes_count, "no_count": self.no_count})
+		return results_dict
 
 class Categories(BaseModel):
 	name = ndb.StringProperty(required = True)
+
+	def addCategoryToUser(self):
+		pass
+
+	def removeCategoryFromUser(self):
+		pass
 
 
 

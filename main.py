@@ -10,10 +10,10 @@ from protorpc import remote
 
 class MainHandler(webapp2.RequestHandler):
     def get(self):
-        user = Users.query(Users.email == "email@test.com").fetch(1)[0]
-        categories = Categories.query(Categories.name == "Fashion").fetch()
+        user = Users.query(Users.email == "sandeep@kek.com").fetch(1)[0]
+        categories = Categories.query(Categories.name == "Sports").fetch()
         questions = Questions.get_batch(user, categories, 3)
-        self.response.write(user.email)
+        self.response.write(len(questions))
 
 class GetResponse(messages.Message):
     message = messages.StringField(1)
@@ -97,6 +97,18 @@ class UsersApi(remote.Service):
                description = 'Questions Management Resources')
 class QuestionsApi(remote.Service):
 
+    # @endpoints.method(QuestionObjectCreation, QuestionObjectCreation,
+    #                     name = 'get_batch',
+    #                     path = 'get_batch',
+    #                     http_method = 'GET')
+    # def getBatch(self, request):
+    #     user = Users.get_by_id(request.user_id)
+    #     if(user_query):
+    #         user = UserObject(email = user_query[0].email, success = True)
+    #     else:
+    #         user = UserObject(message = "Error: could not fetch that user. That user may not exist.", success = False)
+    #     return user
+
     @endpoints.method(QuestionObjectCreation, PostResponse,
                         name = 'create',
                         path = 'create',
@@ -139,11 +151,51 @@ class QuestionsApi(remote.Service):
             post_response = PostResponse(message = "Post successful.", success = True)
         return post_response
 
+    @endpoints.method(QuestionObjectCreation, PostResponse,
+                        name = 'favourite',
+                        path = 'favourite',
+                        http_method = 'POST')
+    def favourite(self, request):
+        question = Questions.get_by_id(request.question_id)
+        user = Users.get_by_id(request.user_id)
+        result = question.favourite(user)
+        if result == False:
+            post_response = PostResponse(message = "Error.", success = False)
+        else:
+            post_response = PostResponse(message = "Post successful. Question favourited.", success = True)
+        return post_response
+
+    @endpoints.method(QuestionObjectCreation, PostResponse,
+                        name = 'unfavourite',
+                        path = 'unfavourite',
+                        http_method = 'POST')
+    def unfavourite(self, request):
+        question = Questions.get_by_id(request.question_id)
+        user = Users.get_by_id(request.user_id)
+        result = question.unfavourite(user)
+        if result == False:
+            post_response = PostResponse(message = "Error.", success = False)
+        else:
+            post_response = PostResponse(message = "Post successful. Question unfavourited.", success = True)
+        return post_response
+
+    @endpoints.method(QuestionObjectCreation, PostResponse,
+                        name = 'flag',
+                        path = 'flag',
+                        http_method = 'POST')
+    def flag(self, request):
+        question = Questions.get_by_id(request.question_id)
+        result = question.flag(request.user_id)
+        if result == False:
+            post_response = PostResponse(message = "Error. Question already has answer from user.", success = False)
+        else:
+            post_response = PostResponse(message = "Post successful. Question flagged.", success = True)
+        return post_response
+
 
 @endpoints.api(name = 'categories', version = 'v1',
                description = 'Categories Management Resources')
 class CategoriesApi(remote.Service):
-
 
     @endpoints.method(message_types.VoidMessage, CategoryObjects,
                         name = 'get_all',
@@ -169,6 +221,18 @@ class CategoriesApi(remote.Service):
             post_response = PostResponse(message = "Error. Category with that name already exists.", success = False)
         return post_response
 
+    @endpoints.method(CategoryObject, PostResponse,
+                        name = 'create',
+                        path = 'create',
+                        http_method = 'POST')
+    def createCategory(self, request):
+        category_query = Categories.query(Categories.name == request.name)
+        if not category_query.get():
+            Categories(name = request.name).put()
+            post_response = PostResponse(message = "Post successful. Category created.", success = True)
+        else:
+            post_response = PostResponse(message = "Error. Category with that name already exists.", success = False)
+        return post_response
 
 
 application = endpoints.api_server([UsersApi, QuestionsApi, CategoriesApi])
