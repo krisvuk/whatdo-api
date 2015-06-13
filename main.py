@@ -10,7 +10,10 @@ from protorpc import remote
 
 class MainHandler(webapp2.RequestHandler):
     def get(self):
-        self.response.write('The app works')
+        user = Users.query(Users.email == "email@test.com").fetch(1)[0]
+        categories = Categories.query().fetch()
+        questions = Questions.get_batch(user, categories)
+        self.response.write(user.email)
 
 class GetResponse(messages.Message):
     message = messages.StringField(1)
@@ -20,11 +23,20 @@ class PostResponse(messages.Message):
     message = messages.StringField(1)
     success = messages.BooleanField(2)
 
+# user view models
 class UserObject(messages.Message):
     email = messages.StringField(1)
     password = messages.StringField(2)
     message = messages.StringField(3)
     success = messages.BooleanField(4)
+
+
+class QuestionObject(messages.Message):
+    
+
+# questions view models
+class QuestionBatch(messages.Message):
+    pass
 
 class QuestionObject(messages.Message):
     title = messages.StringField(1)
@@ -35,12 +47,20 @@ class QuestionObject(messages.Message):
     message = messages.StringField(6)
     success = messages.BooleanField(7)
 
+
+# category view models
+class CategoryObject(messages.Message):
+    name = messages.StringField(1)
+
+class CategoryObjects(messages.Message):
+    categories = messages.MessageField(CategoryObject, 1, repeated = True)
+
 @endpoints.api(name = 'users', version = 'v1',
                description = 'User Management Resources')
 class UsersApi(remote.Service):
 
     @endpoints.method(UserObject, UserObject,
-                        name = 'getUserByEmail',
+                        name = 'get_user',
                         path = 'get_user',
                         http_method = 'GET')
     def getUser(self, request):
@@ -52,7 +72,7 @@ class UsersApi(remote.Service):
         return user
 
     @endpoints.method(UserObject, PostResponse,
-                        name = 'createUser',
+                        name = 'create',
                         path = 'create',
                         http_method = 'POST')
     def createUser(self, request):
@@ -66,19 +86,56 @@ class UsersApi(remote.Service):
 
 @endpoints.api(name = 'questions', version = 'v1',
                description = 'Questions Management Resources')
-class Questions(remote.Service):
-    pass
+class QuestionsApi(remote.Service):
+
+    @endpoints.method(CategoryObject, PostResponse,
+                        name = 'create',
+                        path = 'create',
+                        http_method = 'POST')
+    def createCategory(self, request):
+        category_query = Categories.query(Categories.name == request.name)
+        if not category_query.get():
+            Categories(name = request.name).put()
+            post_response = PostResponse(message = "Post successful. Category created.", success = True)
+        else:
+            post_response = PostResponse(message = "Error. Category with that name already exists.", success = False)
+        return post_response
+
 
 
 
 @endpoints.api(name = 'categories', version = 'v1',
                description = 'Categories Management Resources')
-class Categories(remote.Service):
-    pass
+class CategoriesApi(remote.Service):
+
+
+    @endpoints.method(message_types.VoidMessage, CategoryObjects,
+                        name = 'get_all',
+                        path = 'get_all',
+                        http_method = 'GET')
+    def getAll(self, request):
+        all_categories = []
+        categories = Categories.query()
+        all_categories = [CategoryObject(name = category.name) for category in categories]
+        return CategoryObjects(categories = all_categories)
+
+
+    @endpoints.method(CategoryObject, PostResponse,
+                        name = 'create',
+                        path = 'create',
+                        http_method = 'POST')
+    def createCategory(self, request):
+        category_query = Categories.query(Categories.name == request.name)
+        if not category_query.get():
+            Categories(name = request.name).put()
+            post_response = PostResponse(message = "Post successful. Category created.", success = True)
+        else:
+            post_response = PostResponse(message = "Error. Category with that name already exists.", success = False)
+        return post_response
 
 
 
-application = endpoints.api_server([UsersApi, Questions, Categories])
+application = endpoints.api_server([UsersApi, QuestionsApi, CategoriesApi])
 
 app = webapp2.WSGIApplication([
     ('/', MainHandler)
