@@ -12,3 +12,12 @@ class Users(BaseModel):
 	email = ndb.StringProperty(required = True)
 	password = ndb.StringProperty(required = True)
 	active = ndb.BooleanProperty(default = True)
+
+	# locked to administrators
+	def setUserAsInactive(self):
+		self.active = False
+		return
+
+	# locked to administrators
+	def setUserAsActive(self):
+		self.active = True
