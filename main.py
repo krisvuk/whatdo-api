@@ -11,8 +11,8 @@ from protorpc import remote
 class MainHandler(webapp2.RequestHandler):
     def get(self):
         user = Users.query(Users.email == "email@test.com").fetch(1)[0]
-        categories = Categories.query().fetch()
-        questions = Questions.get_batch(user, categories)
+        categories = Categories.query(Categories.name == "Fashion").fetch()
+        questions = Questions.get_batch(user, categories, 3)
         self.response.write(user.email)
 
 class GetResponse(messages.Message):
@@ -47,6 +47,7 @@ class QuestionObjectCreation(messages.Message):
     category_id = messages.IntegerField(6)
     answered = messages.MessageField(CategoryObject, 7, repeated = True)
     user_id = messages.IntegerField(8)
+    question_id = messages.IntegerField(9)
 
 class QuestionBatch(messages.Message):
     pass
@@ -90,6 +91,8 @@ class UsersApi(remote.Service):
             post_response = PostResponse(message = "Error. User with that email already exists.", success = False)
         return post_response
 
+
+
 @endpoints.api(name = 'questions', version = 'v1',
                description = 'Questions Management Resources')
 class QuestionsApi(remote.Service):
@@ -99,17 +102,42 @@ class QuestionsApi(remote.Service):
                         path = 'create',
                         http_method = 'POST')
     def createQuestion(self, request):
-        user = Users.get_by_id(request.user_id)
-        category = Categories.get_by_id(request.category_id).key
-        question = Questions(title = request.title, category = category).put()
-        user.questions.append(question)
-        user.put()
-        post_response = PostResponse(message = "Post successful. Question created.", success = True)
-        # except:
-        #     post_response = PostResponse(message = "Error. Question was not created.", success = False)
+        try:
+            user = Users.get_by_id(request.user_id)
+            category = Categories.get_by_id(request.category_id).key
+            question = Questions(title = request.title, category = category).put()
+            user.questions.append(question)
+            user.put()
+            post_response = PostResponse(message = "Post successful. Question created.", success = True)
+        except:
+            post_response = PostResponse(message = "Error. Question was not created.", success = False)
         return post_response
 
+    @endpoints.method(QuestionObjectCreation, PostResponse,
+                        name = 'yes_vote',
+                        path = 'yes_vote',
+                        http_method = 'POST')
+    def yes_vote(self, request):
+        question = Questions.get_by_id(request.question_id)
+        status = question.yes_vote(request.user_id)
+        if status == False:
+            post_response = PostResponse(message = "Error. You've already answered this question.", success = False)
+        else:
+            post_response = PostResponse(message = "Post successful.", success = True)
+        return post_response
 
+    @endpoints.method(QuestionObjectCreation, PostResponse,
+                        name = 'no_vote',
+                        path = 'no_vote',
+                        http_method = 'POST')
+    def no_vote(self, request):
+        question = Questions.get_by_id(request.question_id)
+        status = question.no_vote(request.user_id)
+        if status == False:
+            post_response = PostResponse(message = "Error. You've already answered this question.", success = False)
+        else:
+            post_response = PostResponse(message = "Post successful.", success = True)
+        return post_response
 
 
 @endpoints.api(name = 'categories', version = 'v1',

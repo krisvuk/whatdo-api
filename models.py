@@ -27,12 +27,32 @@ class Questions(BaseModel):
 	answered = ndb.KeyProperty(repeated = True, kind = "Users")
 		
 	@classmethod
-	def get_batch(cls, User, Categories):
-		print User
-		print [category.key for category in Categories]
+	def get_batch(cls, User, Categories, amount):
+		categories = [category.key for category in Categories]
+		questions = cls.query(cls.flag_count < 10, cls.category.IN(categories)).fetch(amount)
+		# user_answers = Users.get_by_id(User).answered
 		# questions = cls.query(cls.flag_count < 10, cls.category in Categories)
 		# questions_list = [question for question in questions if User not in answered]
-		# return questions_list
+		print questions
+		return questions
+
+	def yes_vote(self, User):
+		user = Users.get_by_id(User)
+		if user.key in self.answered:
+			return False
+		self.answered.append(user.key)
+		self.yes_count = self.yes_count + 1
+		self.put()
+		return True
+
+	def no_vote(self, User):
+		user = Users.get_by_id(User)
+		if user.key in self.answered:
+			return False
+		self.answered.append(user.key)
+		self.no_count = self.no_count + 1
+		self.put()
+		return True
 
 
 class Categories(BaseModel):
