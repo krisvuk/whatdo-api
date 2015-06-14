@@ -10,10 +10,7 @@ from protorpc import remote
 
 class MainHandler(webapp2.RequestHandler):
     def get(self):
-        user = Users.query(Users.email == "sandeep@kek.com").fetch(1)[0]
-        categories = Categories.query(Categories.name == "Sports").fetch()
-        questions = Questions.get_batch(user, categories, 3)
-        self.response.write(len(questions))
+        self.response.write("The apperino workerino.")
 
 class GetResponse(messages.Message):
     message = messages.StringField(1)
@@ -115,27 +112,16 @@ class QuestionsApi(remote.Service):
                 question_id = question.key.id()))
         return QuestionObjects(questions = question_objects)
 
-
-
-
-
-
-
     @endpoints.method(QuestionObject, QuestionObject,
                         name = 'getQuestion',
                         path = 'get_question',
                         http_method = 'GET')
     def getQuestion(self, request):
-        question = Questions.query(Questions.id == request.question_id)
+        question = Questions.get_by_id(request.question_id)
+        print question.yes_count
         return QuestionObject(title = question.title, yes_count = question.yes_count, 
             no_count = question.no_count, flag_count = question.flag_count, 
             visible = question.visible)
-        
-
-
-
-
-
 
     @endpoints.method(QuestionObjectCreation, PostResponse,
                         name = 'create',
