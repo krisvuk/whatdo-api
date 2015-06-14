@@ -93,11 +93,15 @@ class Questions(BaseModel):
 class Categories(BaseModel):
 	name = ndb.StringProperty(required = True)
 
-	def addCategoryToUser(self):
-		pass
+	@classmethod
+	def addCategoriesToUser(cls, User, Categories):
+		user = Users.get_by_id(User)
+		categories = [category.key for category in categories]
+		user.categories = categories
+		user.put()
+		return True
 
-	def removeCategoryFromUser(self):
-		pass
+
 
 
 

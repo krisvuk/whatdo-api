@@ -29,6 +29,7 @@ class CategoryObject(messages.Message):
 
 class CategoryObjects(messages.Message):
     categories = messages.MessageField(CategoryObject, 1, repeated = True)
+    user = messages.IntegerField(2)
 
 # user view models
 class UserObject(messages.Message):
@@ -234,6 +235,21 @@ class CategoriesApi(remote.Service):
             post_response = PostResponse(message = "Error. Category with that name already exists.", success = False)
         return post_response
 
+
+    @endpoints.method(CategoryObject, PostResponse,
+                        name = 'addUserToCategory',
+                        path = 'add_user_to_category',
+                        http_method = 'POST')
+    def addUserToCategory(self, request):
+        categories = Categories.query()
+        user = Users.get_by_id(request.user_id)
+        result = question.unfavourite(user)
+        Categories.addCategoriesToUser(user, categories)
+        if result == False:
+            post_response = PostResponse(message = "Error.", success = False)
+        else:
+            post_response = PostResponse(message = "Post successful. Question unfavourited.", success = True)
+        return post_response
 
 application = endpoints.api_server([UsersApi, QuestionsApi, CategoriesApi])
 
