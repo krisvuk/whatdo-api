@@ -14,6 +14,7 @@ class Users(BaseModel):
 	active = ndb.BooleanProperty(default = True)
 	favourited = ndb.KeyProperty(repeated = True, kind = "Questions")
 	questions = ndb.KeyProperty(repeated = True, kind = "Questions")
+	categories = ndb.KeyProperty(repeated = True, kind = "Categories")
 	violations = ndb.IntegerProperty(default = 0)
 
 
@@ -28,7 +29,7 @@ class Questions(BaseModel):
 		
 	@classmethod
 	def get_batch(cls, User, Categories, amount):
-		categories = [category.key for category in Categories]
+		categories = [category for category in Categories]
 		questions = cls.query(cls.flag_count < 10, cls.category.IN(categories)).fetch(amount)
 		questions_list = [question for question in questions if(User.key not in question.answered)]
 		return questions_list
@@ -94,12 +95,16 @@ class Categories(BaseModel):
 	name = ndb.StringProperty(required = True)
 
 	@classmethod
-	def addCategoriesToUser(cls, User, Categories):
-		user = Users.get_by_id(User)
-		categories = [category.key for category in categories]
-		user.categories = categories
-		user.put()
-		return True
+	def addCategoriesToUser(cls, User, Category_List):
+		try:
+			del User.categories
+			User.put()
+			categories = [category.key for category in Category_List]
+			[User.categories.append(category) for category in categories]
+			User.put()
+			return True
+		except:
+			return False
 
 
 

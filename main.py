@@ -29,7 +29,8 @@ class CategoryObject(messages.Message):
 
 class CategoryObjects(messages.Message):
     categories = messages.MessageField(CategoryObject, 1, repeated = True)
-    user = messages.IntegerField(2)
+    list_category_strings = messages.StringField(2, repeated = True)
+    user_id = messages.IntegerField(3)
 
 # user view models
 class UserObject(messages.Message):
@@ -50,9 +51,6 @@ class QuestionObjectCreation(messages.Message):
     user_id = messages.IntegerField(8)
     question_id = messages.IntegerField(9)
 
-class QuestionBatch(messages.Message):
-    pass
-
 class QuestionObject(messages.Message):
     title = messages.StringField(1)
     flag_count = messages.IntegerField(2)
@@ -61,7 +59,12 @@ class QuestionObject(messages.Message):
     visible = messages.BooleanField(5)
     message = messages.StringField(6)
     success = messages.BooleanField(7)
+    question_id = messages.IntegerField(8)
 
+class QuestionObjects(messages.Message):
+    user_id = messages.IntegerField(1)
+    amount = messages.IntegerField(2)
+    questions = messages.MessageField(QuestionObject, 3, repeated = True)
 
 @endpoints.api(name = 'users', version = 'v1',
                description = 'User Management Resources')
@@ -98,17 +101,19 @@ class UsersApi(remote.Service):
                description = 'Questions Management Resources')
 class QuestionsApi(remote.Service):
 
-    # @endpoints.method(QuestionObjectCreation, QuestionObjectCreation,
-    #                     name = 'get_batch',
-    #                     path = 'get_batch',
-    #                     http_method = 'GET')
-    # def getBatch(self, request):
-    #     user = Users.get_by_id(request.user_id)
-    #     if(user_query):
-    #         user = UserObject(email = user_query[0].email, success = True)
-    #     else:
-    #         user = UserObject(message = "Error: could not fetch that user. That user may not exist.", success = False)
-    #     return user
+    @endpoints.method(QuestionObjects, QuestionObjects,
+                        name = 'get_batch',
+                        path = 'get_batch',
+                        http_method = 'GET')
+    def getBatch(self, request):
+        question_objects = []
+        user = Users.get_by_id(request.user_id)
+        list_of_questions = Questions.get_batch(user, user.categories, request.amount)
+        for question in list_of_questions:
+            question_objects.append(QuestionObject(title = question.title, yes_count = question.yes_count,
+                no_count = question.no_count, flag_count = question.flag_count, visible = question.visible,
+                question_id = question.key.id()))
+        return QuestionObjects(questions = question_objects)
 
     @endpoints.method(QuestionObjectCreation, PostResponse,
                         name = 'create',
@@ -208,7 +213,6 @@ class CategoriesApi(remote.Service):
         all_categories = [CategoryObject(name = category.name) for category in categories]
         return CategoryObjects(categories = all_categories)
 
-
     @endpoints.method(CategoryObject, PostResponse,
                         name = 'create',
                         path = 'create',
@@ -236,19 +240,18 @@ class CategoriesApi(remote.Service):
         return post_response
 
 
-    @endpoints.method(CategoryObject, PostResponse,
-                        name = 'addUserToCategory',
-                        path = 'add_user_to_category',
+    @endpoints.method(CategoryObjects, PostResponse,
+                        name = 'addCategoriesToUser',
+                        path = 'add_categories_to_user',
                         http_method = 'POST')
-    def addUserToCategory(self, request):
-        categories = Categories.query()
+    def addCategoriesToUser(self, request):
+        categories = Categories.query(Categories.name.IN(request.list_category_strings)).fetch()
         user = Users.get_by_id(request.user_id)
-        result = question.unfavourite(user)
-        Categories.addCategoriesToUser(user, categories)
+        result = Categories.addCategoriesToUser(user, categories)
         if result == False:
             post_response = PostResponse(message = "Error.", success = False)
         else:
-            post_response = PostResponse(message = "Post successful. Question unfavourited.", success = True)
+            post_response = PostResponse(message = "Post successful. Categories added.", success = True)
         return post_response
 
 application = endpoints.api_server([UsersApi, QuestionsApi, CategoriesApi])
