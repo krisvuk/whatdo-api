@@ -115,6 +115,28 @@ class QuestionsApi(remote.Service):
                 question_id = question.key.id()))
         return QuestionObjects(questions = question_objects)
 
+
+
+
+
+
+
+    @endpoints.method(QuestionObject, QuestionObject,
+                        name = 'getQuestion',
+                        path = 'get_question',
+                        http_method = 'GET')
+    def getQuestion(self, request):
+        question = Questions.query(Questions.id == request.question_id)
+        return QuestionObject(title = question.title, yes_count = question.yes_count, 
+            no_count = question.no_count, flag_count = question.flag_count, 
+            visible = question.visible)
+        
+
+
+
+
+
+
     @endpoints.method(QuestionObjectCreation, PostResponse,
                         name = 'create',
                         path = 'create',
